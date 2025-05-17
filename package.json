@@ -1,0 +1,39 @@
+{
+  "name": "use-user-location",
+  "version": "0.1.0",
+  "description": "A React hook for getting the user's location with address lookup and fallbacks.",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "react",
+    "hook",
+    "location",
+    "geolocation",
+    "geocoding",
+    "address",
+    "coordinates"
+  ],
+  "author": "Mshchutski",
+  "license": "MIT",
+  "peerDependencies": {
+    "react": ">=16.8.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "react": "^18.0.0",
+    "typescript": "^4.0.0"
+  },
+  "volta": {
+    "node": "22.14.0"
+  }
+}
