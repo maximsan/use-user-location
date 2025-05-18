@@ -1,22 +1,54 @@
 name: Release
+
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+
 jobs:
-  build-and-publish:
+  release:
+    name: Create Release PR or Publish
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # to create release commit
+      pull-requests: write # to create a PR if needed
+      id-token: write # for provenance
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          # This is important to allow Pushing to the repo
+          # It would be better to use a dedicated PAT that can trigger workflows
+          # but for now, this will do.
+          # Alternatively, use a GitHub App token.
+          token: ${{ secrets.PAT_FOR_RELEASES || secrets.GITHUB_TOKEN }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: https://registry.npmjs.org/
-      
-      - run: npm ci
-      - run: npm run build
-      
-      - name: Semantic Release
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Create Release Pull Request or Publish to npm
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          # This will run pnpm build && pnpm changeset publish
+          publish: pnpm run cs:publish
+          # Optional: if you want to create PRs instead of publishing directly
+          # version: pnpm run cs:version 
+          commit: "chore: update versions and changelogs"
+          title: "chore: version packages for release"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npx semantic-release
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }} # pnpm uses this

@@ -9,16 +9,16 @@
     "allowImportingTsExtensions": false,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": false,
+    "noEmit": true,
     "jsx": "react-jsx",
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "declaration": true,
-    "outDir": "./dist",
+    // "declaration": true, // Handled by vite-plugin-dts
+    // "outDir": "./dist", // Handled by Vite
     "esModuleInterop": true
   },
-  "include": ["*.ts"],
+  "include": ["*.ts", "vite.config.ts"],
   "exclude": ["node_modules", "dist"]
 }
