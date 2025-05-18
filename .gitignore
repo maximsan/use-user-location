@@ -153,3 +153,7 @@ coverage
 *.swo
 *.swn
 *.bak
+
+cline_docs
+.clinerules
+memory-bank

@@ -115,6 +115,30 @@ For reverse geocoding (converting coordinates to addresses), you can use:
    - No API key required
    - Please respect [Nominatim's usage policy](https://operations.osmfoundation.org/policies/nominatim/)
 
+## Contributing
+
+We use [Conventional Commits](https://www.conventionalcommits.org/) for commit messages. This helps us automate the release process and generate changelogs.
+
+### Commit Message Format
+
+```
+type(scope): description
+```
+
+-   **type**: The type of commit, such as `feat`, `fix`, `docs`, `chore`, etc.
+-   **scope**: The scope of the commit, such as `useUserLocation`, `README`, etc.
+-   **description**: A brief description of the commit.
+
+Example:
+
+```
+feat(useUserLocation): add country flag emoji support
+```
+
+### Release Process
+
+We use [semantic-release](https://github.com/semantic-release/semantic-release) to automate the release process.  Releases are triggered by commits to the `main` branch. The version number is automatically incremented based on the commit messages. A changelog is automatically generated and published to GitHub Releases and npm.
+
 ## License
 
 MIT
