@@ -1,5 +1,6 @@
 {
   "name": "use-user-location",
+  "type": "module",
   "version": "0.1.0",
   "description": "A React hook for getting the user's location with address lookup and fallbacks.",
   "main": "dist/use-user-location.umd.js",
@@ -38,6 +39,7 @@
     "@changesets/cli": "^2.27.1",
     "@commitlint/cli": "^17.0.0",
     "@commitlint/config-conventional": "^17.0.0",
+    "@commitlint/types": "^17.0.0",
     "@types/node": "^20.11.0",
     "@types/react": "^18.0.0",
     "husky": "^8.0.0",

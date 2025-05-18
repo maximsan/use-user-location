@@ -9,7 +9,7 @@ const __dirname = dirname(__filename);
 export default defineConfig({
   build: {
     lib: {
-      entry: resolve(__dirname, 'index.ts'), // Main entry point for the library
+      entry: resolve(__dirname, 'src/index.ts'), // Main entry point for the library
       name: 'UseUserLocation', // Global variable name when used in UMD format (e.g., via a <script> tag)
       // Defines the naming convention for output files based on the format.
       // Explicit '.js' extension is used for clarity and broad compatibility.
