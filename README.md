@@ -21,6 +21,24 @@ yarn add use-user-location
 pnpm add use-user-location
 ```
 
+## Development
+
+- **Node.js** 18+ (`engines` in [`package.json`](package.json))
+- **pnpm** — version pinned via [`packageManager`](package.json) (use `corepack enable` then `pnpm install`)
+
+| Script | Description |
+|--------|-------------|
+| `pnpm install` | Install dependencies (runs `prepare` / Husky) |
+| `pnpm run lint` | Biome check |
+| `pnpm run lint:fix` | Biome format + autofix |
+| `pnpm run typecheck` | `tsc --noEmit` (includes `vite.config.ts` and `src`) |
+| `pnpm run test` | Vitest, single run |
+| `pnpm run test:watch` | Vitest watch |
+| `pnpm run build` | Vite library build + `scripts/postbuild.mjs` |
+| `pnpm run ci` | lint → typecheck → test → build (matches [CI workflow](.github/workflows/ci.yml)) |
+
+Maintainer-oriented details (fallback cascade, test mocks, `optionsKey` gotcha): [CLAUDE.md](CLAUDE.md).
+
 ## Usage
 
 ```tsx
@@ -32,8 +50,8 @@ function LocationDisplay() {
     openCageApiKey: 'your-opencage-api-key',
   });
 
+  if (error) return <p>Error: {error.message}</p>;
   if (!location) return <p>Getting location...</p>;
-  if (error && !location) return <p>Error: {error.message}</p>;
 
   return (
     <div>
@@ -103,6 +121,14 @@ The hook returns an object with the following properties:
 }
 ```
 
+> **Note on `error`:** it reflects the most recent geolocation failure. If the
+> browser Geolocation API fails (e.g. permission denied) but the IP-based
+> fallback then recovers a location, `error` is cleared and `location` is
+> populated. A non-null `error` therefore means no location is currently
+> available — check `error` before rendering a loading state.
+>
+> The `flag` field is a country flag emoji (e.g. 🇺🇸) for both the OpenCage and Nominatim (fallback) providers.
+
 ## API Keys
 
 For reverse geocoding (converting coordinates to addresses), you can use:
@@ -137,7 +163,7 @@ feat(useUserLocation): add country flag emoji support
 
 ### Release Process
 
-We use [semantic-release](https://github.com/semantic-release/semantic-release) to automate the release process.  Releases are triggered by commits to the `main` branch. The version number is automatically incremented based on the commit messages. A changelog is automatically generated and published to GitHub Releases and npm.
+We use [Changesets](https://github.com/changesets/changesets) to automate the release process. When you add a new feature or fix, run `pnpm changeset add` to create a changeset describing the change. When changes are pushed to `main`, a GitHub Action creates a "Version Packages" PR. Merging that PR bumps the version, updates the changelog, and publishes to npm.
 
 ## License
 

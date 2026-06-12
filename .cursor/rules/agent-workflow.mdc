@@ -1,0 +1,23 @@
+---
+description: Planning, summaries, tests, comments, and definition of done for agent work
+alwaysApply: true
+---
+
+# Agent workflow (this repository)
+
+Follow these requirements for implementation tasks, refactors, and non-trivial fixes.
+
+## Plans and communication
+
+- Use **checkbox task lists** in plans and status updates (markdown `- [ ]` / `- [x]`).
+- Include a **clear definition of done** in every plan (concrete, verifiable outcomes).
+- Provide a **summary of changes** when finishing or handing off work (what changed and why, at a high level).
+
+## Code quality
+
+- Add **comments on new or non-obvious code** (intent, invariants, or why—not narration of what the line does).
+- Follow **existing project conventions** and common best practices for TypeScript, React, and this repo’s tooling (Biome, Vitest, Changesets as documented in `CLAUDE.md`).
+
+## Tests
+
+- **Adapt or extend unit tests** when behavior changes or new branches need coverage; keep tests meaningful (avoid trivial assertions).

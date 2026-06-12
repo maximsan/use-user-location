@@ -1,44 +1,46 @@
-import { resolve, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { defineConfig } from 'vite';
-import dts from 'vite-plugin-dts';
+/// <reference types="vitest" />
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import dts from "vite-plugin-dts";
+import { defineConfig } from "vitest/config";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 export default defineConfig({
+  test: {
+    globals: true,
+    environment: "jsdom",
+    setupFiles: "./src/__tests__/setup.ts",
+  },
   build: {
     lib: {
-      entry: resolve(__dirname, 'src/index.ts'), // Main entry point for the library
-      name: 'UseUserLocation', // Global variable name when used in UMD format (e.g., via a <script> tag)
-      // Defines the naming convention for output files based on the format.
-      // Explicit '.js' extension is used for clarity and broad compatibility.
-      fileName: (format: string) => `use-user-location.${format}.js`,
-      formats: ['es', 'umd', 'cjs'], // Specifies the output module formats
+      entry: resolve(__dirname, "src/index.ts"),
+      name: "UseUserLocation",
+      // ESM `.js`, CJS `.cjs`, UMD `.umd.js` so Node resolves each format under `"type": "module"`.
+      fileName: (format: string) => {
+        if (format === "cjs") return "use-user-location.cjs";
+        if (format === "umd") return "use-user-location.umd.js";
+        return "use-user-location.js";
+      },
+      formats: ["es", "umd", "cjs"],
     },
-    // rollupOptions allows direct configuration of Rollup, which Vite uses for production builds.
     rollupOptions: {
-      // 'external' prevents bundling these dependencies.
-      // Assumes 'react' and 'react-dom' will be provided by the consuming application (peer dependencies).
-      external: ['react', 'react-dom'],
+      external: ["react"],
       output: {
-        // 'globals' is used for UMD builds to map external imports to global variables.
-        // e.g., import React from 'react' will use the global 'React' variable in a UMD context.
         globals: {
-          react: 'React',
-          'react-dom': 'ReactDOM',
+          react: "React",
         },
       },
     },
-    sourcemap: true, // Generates sourcemaps for easier debugging of the bundled code.
+    sourcemap: true,
   },
-  // Vite plugins extend its functionality.
   plugins: [
-    // vite-plugin-dts generates TypeScript declaration files (.d.ts) for the library.
-    // This is essential for TypeScript users of the library to get type information.
     dts({
-      insertTypesEntry: true, // Automatically updates the 'types' field in package.json if necessary.
-      outDir: 'dist',         // Specifies that .d.ts files should be placed in the 'dist' directory.
+      outDirs: ["dist"],
+      exclude: ["src/__tests__/**"],
+      // Bundled `dist/index.d.ts` (v5: `bundleTypes` + `@microsoft/api-extractor`; replaces v4 `rollupTypes`).
+      bundleTypes: true,
     }),
   ],
 });

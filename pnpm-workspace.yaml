@@ -1,0 +1,3 @@
+# Allow only esbuild to run its install/build scripts (pnpm's build allowlist).
+allowBuilds:
+  esbuild: true
