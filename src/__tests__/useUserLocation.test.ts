@@ -310,6 +310,48 @@ describe("useUserLocation", () => {
     });
   });
 
+  it("aborts the HTTP request signal when the hook unmounts during reverse geocode", async () => {
+    let httpRequestInit: RequestInit | undefined;
+    let resolveFetch!: (value: Response) => void;
+    const fetchPending = new Promise<Response>((resolve) => {
+      resolveFetch = resolve;
+    });
+
+    vi.spyOn(globalThis, "fetch").mockImplementation((_input, init) => {
+      httpRequestInit = init;
+      return fetchPending;
+    });
+
+    const { unmount } = renderHook(() => useUserLocation());
+
+    await waitFor(() => {
+      expect(httpRequestInit?.signal).toBeDefined();
+    });
+
+    expect(httpRequestInit?.signal?.aborted).toBe(false);
+
+    unmount();
+
+    expect(httpRequestInit?.signal?.aborted).toBe(true);
+
+    await act(async () => {
+      resolveFetch(
+        new Response(
+          JSON.stringify({
+            display_name: "Late, ST, USA",
+            address: {
+              city: "Late",
+              state: "ST",
+              country: "US",
+              country_code: "us",
+            },
+          }),
+          { status: 200 },
+        ),
+      );
+    });
+  });
+
   it("does not update state after unmount when reverse geocode resolves late", async () => {
     let resolveFetch!: (value: Response) => void;
     const fetchPending = new Promise<Response>((resolve) => {

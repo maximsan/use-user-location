@@ -50,10 +50,18 @@ export function useUserLocation(options?: UseUserLocationOptions): UseUserLocati
     const generation = effectGenerationRef.current;
     const isStale = () => generation !== effectGenerationRef.current;
 
+    const httpRequestsAbortController = new AbortController();
+    const httpRequestsAbortSignal = httpRequestsAbortController.signal;
+
     const runSuccess = async (position: GeolocationPosition) => {
       const { latitude, longitude } = position.coords;
 
-      const locationDetails = await getUserLocationDetails(latitude, longitude, config);
+      const locationDetails = await getUserLocationDetails(
+        latitude,
+        longitude,
+        config,
+        httpRequestsAbortSignal,
+      );
       if (isStale()) {
         return;
       }
@@ -69,7 +77,7 @@ export function useUserLocation(options?: UseUserLocationOptions): UseUserLocati
 
       setError({ code: err.code, message: err.message });
 
-      const fallbackLocation = await getIPLocationFallback(config.ipApi);
+      const fallbackLocation = await getIPLocationFallback(config.ipApi, httpRequestsAbortSignal);
       if (isStale()) {
         return;
       }
@@ -77,7 +85,12 @@ export function useUserLocation(options?: UseUserLocationOptions): UseUserLocati
       if (fallbackLocation) {
         const { latitude, longitude } = fallbackLocation;
 
-        const locationDetails = await getUserLocationDetails(latitude, longitude, config);
+        const locationDetails = await getUserLocationDetails(
+          latitude,
+          longitude,
+          config,
+          httpRequestsAbortSignal,
+        );
         if (isStale()) {
           return;
         }
@@ -141,7 +154,11 @@ export function useUserLocation(options?: UseUserLocationOptions): UseUserLocati
     }
 
     return () => {
+      // Mark this effect run as finished first so we never call setState for it again.
+      // Then stop any ongoing fetch so a late response is not treated as a real error
+      // (for example we should not fall back from OpenCage to Nominatim after unmount).
       effectGenerationRef.current += 1;
+      httpRequestsAbortController.abort();
       if (permission && onPermissionChange) {
         permission.removeEventListener("change", onPermissionChange);
       }

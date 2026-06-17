@@ -89,6 +89,30 @@ describe("getUserLocationDetails", () => {
     expect(details?.flag).toBe("🇵🇱");
   });
 
+  it("does not fall back to Nominatim when the OpenCage request is aborted", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes("opencagedata")) {
+        return Promise.reject(new DOMException("Aborted", "AbortError"));
+      }
+      if (url.includes("nominatim")) {
+        return jsonResponse({
+          display_name: "Should not be used",
+          address: { country_code: "pl" },
+        });
+      }
+      return jsonResponse({});
+    });
+
+    const abortController = new AbortController();
+    abortController.abort();
+
+    const details = await getUserLocationDetails(10, 20, baseOptions, abortController.signal);
+
+    expect(details).toBeUndefined();
+    expect(fetchSpy.mock.calls.filter((c) => String(c[0]).includes("nominatim"))).toHaveLength(0);
+  });
+
   it("returns undefined when OpenCage has empty results (no Nominatim call)", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);

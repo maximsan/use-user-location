@@ -51,6 +51,7 @@ Implementation lives under [src/useUserLocation/](src/useUserLocation/): small m
 | `constants.ts` | `DEFAULT_OPTIONS`, geolocation error codes, browser geo timeouts, Unicode flag math |
 | `flagEmoji.ts` | ISO alpha-2 → flag emoji |
 | `reverseGeocode.ts` | OpenCage + Nominatim fallback |
+| `fetchAbortError.ts` | Detect `AbortError` from `fetch` so aborts are not treated as provider failure |
 | `ipLocation.ts` | IP-based coordinate fallback |
 | `browserGeolocation.ts` | `getCurrentPosition` + `POSITION_UNAVAILABLE` retries |
 | `useUserLocation.ts` | React hook, permissions wiring, effect lifecycle |
@@ -68,8 +69,9 @@ Options use `DEFAULT_OPTIONS` from `constants.ts` and are merged at runtime in t
 
 ### Gotchas
 
-- **Options stability**: the effect depends on `JSON.stringify(options)` (an `optionsKey` memo), not the options object itself, so passing a fresh inline object each render won't cause refetch loops. There is a deliberate `biome-ignore` for the exhaustive-deps rule documenting this — preserve it if you touch the effect deps.
-- **Unmount safety**: a `cancelled` flag in the effect cleanup guards against state updates after unmount; keep async setState calls behind it.
+- **Options stability**: merged options are memoized from `JSON.stringify(options)` (`optionsKey`), not the options object reference, so passing a fresh inline object each render won't cause refetch loops. There is a deliberate `biome-ignore` for the exhaustive-deps rule documenting this — preserve it if you touch the memo deps.
+- **Unmount safety**: effect cleanup bumps a generation counter; async paths check staleness after every `await` before `setState`, so work started under a prior effect run (including after `await`) cannot update state.
+- **In-flight HTTP:** each location effect creates an [`AbortController`](https://developer.mozilla.org/en-US/docs/Web/API/AbortController); its `signal` is passed to reverse-geocode and IP `fetch` calls, and cleanup calls `abort()` after bumping the generation counter. That tears down redundant network work; generation checks still gate `setState`, because [`getCurrentPosition`](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/getCurrentPosition) is not cancelled via `AbortSignal` the same way as `fetch`.
 - Default endpoints (`reverseGeocodeApi`, `reverseGeocodeApiFallback`, `ipApi`) are all overridable via options.
 
 ## Testing

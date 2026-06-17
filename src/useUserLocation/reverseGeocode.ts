@@ -1,7 +1,11 @@
+import { isFetchAbortError } from "./fetchAbortError";
 import { codeToFlagEmoji } from "./flagEmoji";
 import type { LocationDetails, UseUserLocationOptions } from "./types";
 
 type ResolvedOptions = Required<UseUserLocationOptions>;
+
+const fetchInit = (abortSignal?: AbortSignal): RequestInit | undefined =>
+  abortSignal ? { signal: abortSignal } : undefined;
 
 /**
  * Reverse geocode via Nominatim/OSM. Returns `undefined` on network or parse failure.
@@ -10,6 +14,7 @@ export async function getUserLocationDetailsFallback(
   lat: number,
   lng: number,
   fallbackUrl: string,
+  abortSignal?: AbortSignal,
 ): Promise<LocationDetails | undefined> {
   const searchParams = new URLSearchParams({
     lat: lat.toString(),
@@ -19,7 +24,7 @@ export async function getUserLocationDetailsFallback(
   const url = `${fallbackUrl}?${searchParams.toString()}`;
 
   try {
-    const result = await fetch(url);
+    const result = await fetch(url, fetchInit(abortSignal));
     if (!result.ok) {
       return undefined;
     }
@@ -43,15 +48,16 @@ export async function getUserLocationDetailsFallback(
 
 /**
  * Reverse geocode: OpenCage when `openCageApiKey` is set, else Nominatim only.
- * On OpenCage failure, falls back to Nominatim.
+ * On OpenCage failure, falls back to Nominatim. Aborted requests do not fall back.
  */
 export async function getUserLocationDetails(
   lat: number,
   lng: number,
   options: ResolvedOptions,
+  abortSignal?: AbortSignal,
 ): Promise<LocationDetails | undefined> {
   if (!options.openCageApiKey) {
-    return getUserLocationDetailsFallback(lat, lng, options.reverseGeocodeApiFallback);
+    return getUserLocationDetailsFallback(lat, lng, options.reverseGeocodeApiFallback, abortSignal);
   }
 
   const searchParams = new URLSearchParams({
@@ -61,7 +67,7 @@ export async function getUserLocationDetails(
   const url = `${options.reverseGeocodeApi}?${searchParams.toString()}`;
 
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, fetchInit(abortSignal));
     if (!response.ok) {
       throw new Error(`Reverse geocoding failed with status ${response.status}`);
     }
@@ -86,7 +92,10 @@ export async function getUserLocationDetails(
       state_code: component?.state_code,
       flag: annotations?.flag,
     };
-  } catch {
-    return getUserLocationDetailsFallback(lat, lng, options.reverseGeocodeApiFallback);
+  } catch (error) {
+    if (isFetchAbortError(error)) {
+      return undefined;
+    }
+    return getUserLocationDetailsFallback(lat, lng, options.reverseGeocodeApiFallback, abortSignal);
   }
 }
