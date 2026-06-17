@@ -310,6 +310,48 @@ describe("useUserLocation", () => {
     });
   });
 
+  it("does not update state after unmount when reverse geocode resolves late", async () => {
+    let resolveFetch!: (value: Response) => void;
+    const fetchPending = new Promise<Response>((resolve) => {
+      resolveFetch = resolve;
+    });
+    vi.spyOn(globalThis, "fetch").mockImplementation(() => fetchPending);
+
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const { unmount } = renderHook(() => useUserLocation());
+
+    await waitFor(() => {
+      expect(navigator.geolocation.getCurrentPosition).toHaveBeenCalled();
+    });
+
+    unmount();
+
+    await act(async () => {
+      resolveFetch(
+        new Response(
+          JSON.stringify({
+            display_name: "Late, ST, USA",
+            address: {
+              city: "Late",
+              state: "ST",
+              country: "US",
+              country_code: "us",
+            },
+          }),
+          { status: 200 },
+        ),
+      );
+    });
+
+    const reactUnmountWarning = consoleError.mock.calls.some((args) =>
+      String(args[0]).includes("Can't perform a React state update"),
+    );
+    expect(reactUnmountWarning).toBe(false);
+
+    consoleError.mockRestore();
+  });
+
   it("does not refetch after unmount when the permission changes", async () => {
     const status = createMockPermissionStatus("granted");
     vi.spyOn(navigator.permissions, "query").mockResolvedValue(status);
