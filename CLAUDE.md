@@ -37,6 +37,8 @@ pnpm run cs:publish     # runs ci, then `changeset publish` to npm
 
 In practice releases are automated: `.github/workflows/release.yml` runs the Changesets action on push to `main` (opens/updates a version PR, publishes on merge). `.github/workflows/ci.yml` runs the `ci` script on PRs and pushes to `main`.
 
+The release workflow sets `registry-url` and `NODE_AUTH_TOKEN` (same value as `NPM_TOKEN`) so `pnpm publish` can authenticate to the public registry. `@changesets/cli` 2.31.0 can throw `Cannot read properties of undefined (reading 'includes')` when npm returns **E403** without a `summary` field; this repo applies a [pnpm patch](patches/@changesets__cli@2.31.0.patch) so the real npm error is surfaced. If publish still fails, use an [npm access token](https://docs.npmjs.com/about-access-tokens) with **publish** permission for the package (and configure [trusted publishers](https://docs.npmjs.com/trusted-publishers) if you rely on OIDC provenance).
+
 ## Commit conventions
 
 Commits **must** follow Conventional Commits — enforced by the `.husky/commit-msg` hook running `commitlint` against `@commitlint/config-conventional`. A non-conforming message will block the commit locally.
@@ -49,7 +51,9 @@ Implementation lives under [src/useUserLocation/](src/useUserLocation/): small m
 |------|------|
 | `types.ts` | Public TypeScript interfaces |
 | `constants.ts` | `DEFAULT_OPTIONS`, geolocation error codes, browser geo timeouts, Unicode flag math |
+| `typeGuards.ts` | Shared `unknown` predicates (`isRecord`, `isString`, `isFiniteNumber`) for parsers and errors |
 | `flagEmoji.ts` | ISO alpha-2 → flag emoji |
+| `geocodeResponseParsers.ts` | Pure parsers: Nominatim / OpenCage / IP JSON → `LocationDetails` / `Location` |
 | `reverseGeocode.ts` | OpenCage + Nominatim fallback |
 | `fetchAbortError.ts` | Detect `AbortError` from `fetch` so aborts are not treated as provider failure |
 | `ipLocation.ts` | IP-based coordinate fallback |
@@ -72,12 +76,14 @@ Options use `DEFAULT_OPTIONS` from `constants.ts` and are merged at runtime in t
 - **Options stability**: merged options are memoized from `JSON.stringify(options)` (`optionsKey`), not the options object reference, so passing a fresh inline object each render won't cause refetch loops. There is a deliberate `biome-ignore` for the exhaustive-deps rule documenting this — preserve it if you touch the memo deps.
 - **Unmount safety**: effect cleanup bumps a generation counter; async paths check staleness after every `await` before `setState`, so work started under a prior effect run (including after `await`) cannot update state.
 - **In-flight HTTP:** each location effect creates an [`AbortController`](https://developer.mozilla.org/en-US/docs/Web/API/AbortController); its `signal` is passed to reverse-geocode and IP `fetch` calls, and cleanup calls `abort()` after bumping the generation counter. That tears down redundant network work; generation checks still gate `setState`, because [`getCurrentPosition`](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/getCurrentPosition) is not cancelled via `AbortSignal` the same way as `fetch`.
+- **Geocoder JSON:** response field mapping is implemented in `geocodeResponseParsers.ts` (not in `fetch` callers). Example API bodies for tests live in [`src/__tests__/fixtures/geocodingResponses.ts`](src/__tests__/fixtures/geocodingResponses.ts) so mocks match parser expectations.
 - Default endpoints (`reverseGeocodeApi`, `reverseGeocodeApiFallback`, `ipApi`) are all overridable via options.
 
 ## Testing
 
 - **Integration:** [src/__tests__/useUserLocation.test.ts](src/__tests__/useUserLocation.test.ts) — Vitest + jsdom + `@testing-library/react` `renderHook`, full hook cascade.
-- **Unit:** [src/__tests__/flagEmoji.test.ts](src/__tests__/flagEmoji.test.ts), [src/__tests__/reverseGeocode.test.ts](src/__tests__/reverseGeocode.test.ts) — pure helpers with mocked `fetch` where needed.
+- **Unit:** [src/__tests__/flagEmoji.test.ts](src/__tests__/flagEmoji.test.ts), [src/__tests__/reverseGeocode.test.ts](src/__tests__/reverseGeocode.test.ts), [src/__tests__/geocodeResponseParsers.test.ts](src/__tests__/geocodeResponseParsers.test.ts), [src/__tests__/fetchAbortError.test.ts](src/__tests__/fetchAbortError.test.ts), [src/__tests__/typeGuards.test.ts](src/__tests__/typeGuards.test.ts) — pure helpers with mocked `fetch` where needed.
+- **Shared test helpers:** [src/__tests__/helpers/jsonResponse.ts](src/__tests__/helpers/jsonResponse.ts) builds a fresh `Response` per mock call; [src/__tests__/fixtures/geocodingResponses.ts](src/__tests__/fixtures/geocodingResponses.ts) holds reusable Nominatim / OpenCage / ipwho JSON bodies aligned with the parsers.
 
 Because jsdom omits the browser APIs the hook needs, [src/__tests__/setup.ts](src/__tests__/setup.ts) mocks `navigator.geolocation`, `navigator.permissions`, and global `fetch`. Return a **fresh `Response`** per `fetch` call (bodies are single-use) and branch mocks on the request URL to hit each tier.
 

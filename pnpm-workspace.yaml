@@ -1,3 +1,5 @@
 # Allow only esbuild to run its install/build scripts (pnpm's build allowlist).
 allowBuilds:
   esbuild: true
+patchedDependencies:
+  '@changesets/cli@2.31.0': patches/@changesets__cli@2.31.0.patch
