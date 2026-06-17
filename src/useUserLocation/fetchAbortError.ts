@@ -1,3 +1,5 @@
+import { isRecord, isString } from "./typeGuards";
+
 /**
  * Detects abort from `fetch(..., { signal })` (or any API that rejects with `AbortError`).
  * Used so aborted work is not treated as a normal failure (e.g. OpenCage → Nominatim fallback).
@@ -7,10 +9,5 @@ export function isFetchAbortError(error: unknown): boolean {
     return true;
   }
 
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "name" in error &&
-    (error as { name: string }).name === "AbortError"
-  );
+  return isRecord(error) && isString(error.name) && error.name === "AbortError";
 }

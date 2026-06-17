@@ -1,6 +1,19 @@
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useUserLocation } from "../useUserLocation";
+import {
+  ipwhoFailureGeneric,
+  ipwhoFailureRateLimit,
+  ipwhoLondonSuccess,
+  nominatimCustomDisplay,
+  nominatimLateStale,
+  nominatimLondonEnglandUk,
+  nominatimLondonFullAddress,
+  nominatimLondonShort,
+  nominatimNewYorkNyUsa,
+  openCageNewYorkUsa,
+} from "./fixtures/geocodingResponses";
+import { jsonResponse } from "./helpers/jsonResponse";
 
 // Mock position returned by the browser Geolocation API
 const mockPosition = {
@@ -44,9 +57,6 @@ function createMockPermissionStatus(state: PermissionState): MockPermissionStatu
   return status as unknown as MockPermissionStatus;
 }
 
-const jsonResponse = (body: unknown, status = 200) =>
-  Promise.resolve(new Response(JSON.stringify(body), { status }));
-
 beforeEach(() => {
   // jsdom doesn't provide navigator.permissions or navigator.geolocation — define them
   if (!navigator.permissions) {
@@ -73,17 +83,7 @@ beforeEach(() => {
   );
 
   // Stub global fetch — return a new Response each call (body can only be read once)
-  vi.spyOn(globalThis, "fetch").mockImplementation(() =>
-    jsonResponse({
-      display_name: "New York, NY, USA",
-      address: {
-        city: "New York",
-        state: "New York",
-        country: "United States",
-        country_code: "us",
-      },
-    }),
-  );
+  vi.spyOn(globalThis, "fetch").mockImplementation(() => jsonResponse(nominatimNewYorkNyUsa));
 });
 
 afterEach(() => {
@@ -123,12 +123,7 @@ describe("useUserLocation", () => {
   });
 
   it("derives a flag emoji from the country code on the fallback (Nominatim) path", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
-      jsonResponse({
-        display_name: "London, England, United Kingdom",
-        address: { country: "United Kingdom", country_code: "gb" },
-      }),
-    );
+    vi.spyOn(globalThis, "fetch").mockImplementation(() => jsonResponse(nominatimLondonEnglandUk));
 
     const { result } = renderHook(() => useUserLocation());
 
@@ -143,15 +138,7 @@ describe("useUserLocation", () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
       if (url.includes("opencagedata.com")) {
-        return jsonResponse({
-          results: [
-            {
-              formatted: "New York, NY, USA",
-              components: { country: "United States", country_code: "us" },
-              annotations: { flag: "🇺🇸" },
-            },
-          ],
-        });
+        return jsonResponse(openCageNewYorkUsa);
       }
       return jsonResponse({});
     });
@@ -197,16 +184,9 @@ describe("useUserLocation", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
       if (url.includes("nominatim")) {
-        return jsonResponse({ display_name: "London", address: { country_code: "gb" } });
+        return jsonResponse(nominatimLondonShort);
       }
-      return jsonResponse({
-        success: true,
-        latitude: 51.5074,
-        longitude: -0.1278,
-        city: "London",
-        region: "England",
-        country: "United Kingdom",
-      });
+      return jsonResponse(ipwhoLondonSuccess);
     });
 
     const { result } = renderHook(() => useUserLocation());
@@ -224,25 +204,12 @@ describe("useUserLocation", () => {
       createMockPermissionStatus("denied"),
     );
 
-    const ipResponse = {
-      success: true,
-      latitude: 51.5074,
-      longitude: -0.1278,
-      city: "London",
-      region: "England",
-      country: "United Kingdom",
-    };
-    const nominatimResponse = {
-      display_name: "London, England, United Kingdom",
-      address: { city: "London", state: "England", country: "United Kingdom", country_code: "gb" },
-    };
-
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
       if (url.includes("nominatim")) {
-        return jsonResponse(nominatimResponse);
+        return jsonResponse(nominatimLondonFullAddress);
       }
-      return jsonResponse(ipResponse);
+      return jsonResponse(ipwhoLondonSuccess);
     });
 
     const { result } = renderHook(() => useUserLocation());
@@ -260,9 +227,7 @@ describe("useUserLocation", () => {
     vi.spyOn(navigator.permissions, "query").mockResolvedValue(
       createMockPermissionStatus("denied"),
     );
-    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
-      jsonResponse({ success: false, message: "Rate limit exceeded" }),
-    );
+    vi.spyOn(globalThis, "fetch").mockImplementation(() => jsonResponse(ipwhoFailureRateLimit));
 
     const { result } = renderHook(() => useUserLocation());
 
@@ -335,20 +300,7 @@ describe("useUserLocation", () => {
     expect(httpRequestInit?.signal?.aborted).toBe(true);
 
     await act(async () => {
-      resolveFetch(
-        new Response(
-          JSON.stringify({
-            display_name: "Late, ST, USA",
-            address: {
-              city: "Late",
-              state: "ST",
-              country: "US",
-              country_code: "us",
-            },
-          }),
-          { status: 200 },
-        ),
-      );
+      resolveFetch(await jsonResponse(nominatimLateStale));
     });
   });
 
@@ -370,20 +322,7 @@ describe("useUserLocation", () => {
     unmount();
 
     await act(async () => {
-      resolveFetch(
-        new Response(
-          JSON.stringify({
-            display_name: "Late, ST, USA",
-            address: {
-              city: "Late",
-              state: "ST",
-              country: "US",
-              country_code: "us",
-            },
-          }),
-          { status: 200 },
-        ),
-      );
+      resolveFetch(await jsonResponse(nominatimLateStale));
     });
 
     const reactUnmountWarning = consoleError.mock.calls.some((args) =>
@@ -422,7 +361,7 @@ describe("useUserLocation", () => {
     delete (navigator as unknown as Record<string, unknown>).geolocation;
 
     // IP fallback also fails so the error is not cleared
-    vi.spyOn(globalThis, "fetch").mockImplementation(() => jsonResponse({ success: false }));
+    vi.spyOn(globalThis, "fetch").mockImplementation(() => jsonResponse(ipwhoFailureGeneric));
 
     const { result } = renderHook(() => useUserLocation());
 
@@ -448,7 +387,7 @@ describe("useUserLocation", () => {
   it("accepts custom options", async () => {
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
-      .mockImplementation(() => jsonResponse({ display_name: "Custom", address: {} }));
+      .mockImplementation(() => jsonResponse(nominatimCustomDisplay));
 
     renderHook(() =>
       useUserLocation({

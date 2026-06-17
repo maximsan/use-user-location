@@ -1,5 +1,8 @@
 import { isFetchAbortError } from "./fetchAbortError";
-import { codeToFlagEmoji } from "./flagEmoji";
+import {
+  parseNominatimReversePayload,
+  parseOpenCageGeocodePayload,
+} from "./geocodeResponseParsers";
 import type { LocationDetails, UseUserLocationOptions } from "./types";
 
 type ResolvedOptions = Required<UseUserLocationOptions>;
@@ -30,17 +33,7 @@ export async function getUserLocationDetailsFallback(
     }
 
     const data = await result.json();
-
-    return {
-      address: data?.display_name,
-      continent: data?.address?.continent,
-      country: data?.address?.country,
-      city: data?.address?.city,
-      state: data?.address?.state,
-      country_code: data?.address?.country_code,
-      state_code: data?.address?.state_code,
-      flag: codeToFlagEmoji(data?.address?.country_code),
-    };
+    return parseNominatimReversePayload(data);
   } catch {
     return undefined;
   }
@@ -73,25 +66,7 @@ export async function getUserLocationDetails(
     }
 
     const data = await response.json();
-    const result = data.results?.[0];
-
-    if (!result) {
-      return undefined;
-    }
-
-    const component = result?.components;
-    const annotations = result?.annotations;
-
-    return {
-      address: result?.formatted,
-      continent: component?.continent,
-      country: component?.country,
-      city: component?.city,
-      state: component?.state,
-      country_code: component?.country_code,
-      state_code: component?.state_code,
-      flag: annotations?.flag,
-    };
+    return parseOpenCageGeocodePayload(data);
   } catch (error) {
     if (isFetchAbortError(error)) {
       return undefined;

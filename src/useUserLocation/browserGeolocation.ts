@@ -3,14 +3,10 @@ import {
   BROWSER_GEO_TIMEOUT_MS,
   GEO_ERR_POSITION_UNAVAILABLE,
 } from "./constants";
+import { isFiniteNumber, isRecord } from "./typeGuards";
 
 function isGeolocationPositionError(error: unknown): error is GeolocationPositionError {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    typeof (error as GeolocationPositionError).code === "number"
-  );
+  return isRecord(error) && "code" in error && isFiniteNumber(error.code);
 }
 
 /**

@@ -3,6 +3,14 @@ import {
   getUserLocationDetails,
   getUserLocationDetailsFallback,
 } from "../useUserLocation/reverseGeocode";
+import {
+  nominatimBerlinDe,
+  nominatimFallbackCityPoland,
+  nominatimShouldNotUse,
+  nominatimSomewhereFrance,
+  openCageEmptyResults,
+} from "./fixtures/geocodingResponses";
+import { jsonResponse } from "./helpers/jsonResponse";
 
 const baseOptions = {
   openCageApiKey: "test-key",
@@ -12,25 +20,13 @@ const baseOptions = {
   maxRetries: 3,
 };
 
-const jsonResponse = (body: unknown, status = 200) =>
-  Promise.resolve(new Response(JSON.stringify(body), { status }));
-
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
 describe("getUserLocationDetailsFallback", () => {
   beforeEach(() => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
-      jsonResponse({
-        display_name: "Berlin, DE",
-        address: {
-          country: "Germany",
-          country_code: "de",
-          city: "Berlin",
-        },
-      }),
-    );
+    vi.spyOn(globalThis, "fetch").mockImplementation(() => jsonResponse(nominatimBerlinDe));
   });
 
   it("returns parsed Nominatim payload", async () => {
@@ -50,10 +46,7 @@ describe("getUserLocationDetails", () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
       if (url.includes("nominatim")) {
-        return jsonResponse({
-          display_name: "Somewhere",
-          address: { country_code: "fr" },
-        });
+        return jsonResponse(nominatimSomewhereFrance);
       }
       return jsonResponse({});
     });
@@ -76,10 +69,7 @@ describe("getUserLocationDetails", () => {
         return jsonResponse({ error: "bad" }, 500);
       }
       if (url.includes("nominatim")) {
-        return jsonResponse({
-          display_name: "Fallback City",
-          address: { country_code: "pl" },
-        });
+        return jsonResponse(nominatimFallbackCityPoland);
       }
       return jsonResponse({});
     });
@@ -96,10 +86,7 @@ describe("getUserLocationDetails", () => {
         return Promise.reject(new DOMException("Aborted", "AbortError"));
       }
       if (url.includes("nominatim")) {
-        return jsonResponse({
-          display_name: "Should not be used",
-          address: { country_code: "pl" },
-        });
+        return jsonResponse(nominatimShouldNotUse);
       }
       return jsonResponse({});
     });
@@ -117,7 +104,7 @@ describe("getUserLocationDetails", () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
       if (url.includes("opencagedata")) {
-        return jsonResponse({ results: [] });
+        return jsonResponse(openCageEmptyResults);
       }
       return jsonResponse({});
     });
