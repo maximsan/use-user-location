@@ -38,6 +38,12 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
+      # Confirms the secret resolves to an npm user (read scope). If this fails, fix NPM_TOKEN before publish.
+      - name: Verify npm token
+        run: npm whoami --registry=https://registry.npmjs.org
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Create Release Pull Request or Publish to npm
         id: changesets
         uses: changesets/action@v1.9.0
