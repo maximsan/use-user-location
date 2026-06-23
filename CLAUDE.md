@@ -37,9 +37,7 @@ pnpm run cs:publish     # runs ci, then `changeset publish` to npm
 
 In practice releases are automated: `.github/workflows/release.yml` runs the Changesets action on push to `main` (opens/updates a version PR, publishes on merge). `.github/workflows/ci.yml` runs the `ci` script on PRs and pushes to `main`.
 
-The release workflow sets `registry-url` and `NODE_AUTH_TOKEN` (same value as `NPM_TOKEN`) so `pnpm publish` can authenticate to the public registry, and runs `npm whoami` before Changesets to catch bad/missing tokens early. `@changesets/cli` 2.31.0 can throw `Cannot read properties of undefined (reading 'includes')` when npm returns **E403** without a `summary` field; this repo applies a [pnpm patch](patches/@changesets__cli@2.31.0.patch) so the real npm error is surfaced.
-
-**Provenance:** [`pnpm publish`](https://pnpm.io/cli/publish) in v11+ is implemented natively (not by shelling out to the `npm` CLI). Publishing with [`publishConfig.provenance`](https://docs.npmjs.com/generating-provenance-statements) from that path has repeatedly surfaced opaque **E403**/**E404** responses in CI; this package therefore omits `provenance` until you use a flow npm fully supports (for example [trusted publishers](https://docs.npmjs.com/trusted-publishers) + recent npm on an `npm publish` path, or a future pnpm release you have verified). If publish fails with **E403** after that, use an [npm access token](https://docs.npmjs.com/about-access-tokens) with **publish** permission (automation or granular with publish for this package).
+**Auth:** publishing uses [OIDC trusted publishing](https://docs.npmjs.com/trusted-publishers) (no `NPM_TOKEN`). The workflow sets `id-token: write` and `pnpm publish` exchanges the OIDC token for a short-lived npm token; this requires a trusted publisher configured on npmjs.com for `maximsan/use-user-location` + `release.yml`, and Node >= 22.14.0 (workflow pins Node 24). `@changesets/cli` 2.31.0 can throw `Cannot read properties of undefined (reading 'includes')` on an **E403** without a `summary` field; a [pnpm patch](patches/@changesets__cli@2.31.0.patch) surfaces the real npm error.
 
 ## Commit conventions
 

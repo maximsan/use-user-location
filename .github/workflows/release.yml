@@ -30,20 +30,16 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6.4.0
         with:
-          node-version: 22
+          # OIDC trusted publishing needs npm >= 11.5.1 (Node >= 22.14.0).
+          node-version: 24
           cache: pnpm
-          # Lets pnpm/npm pick up NODE_AUTH_TOKEN during `pnpm publish` (same secret as NPM_TOKEN).
           registry-url: https://registry.npmjs.org
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
-      # Confirms the secret resolves to an npm user (read scope). If this fails, fix NPM_TOKEN before publish.
-      - name: Verify npm token
-        run: npm whoami --registry=https://registry.npmjs.org
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
+      # No NPM_TOKEN: publishes via OIDC trusted publishing (id-token: write).
+      # Requires a trusted publisher for this package configured on npmjs.com.
       - name: Create Release Pull Request or Publish to npm
         id: changesets
         uses: changesets/action@v1.9.0
@@ -53,5 +49,3 @@ jobs:
           title: "chore: version packages for release"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
