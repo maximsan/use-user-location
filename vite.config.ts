@@ -33,7 +33,10 @@ export default defineConfig({
         },
       },
     },
-    sourcemap: true,
+    // "hidden": still emit .map files locally, but omit the
+    // //# sourceMappingURL comment so published bundles carry no dangling
+    // reference (the .map files are excluded from the npm tarball via "files").
+    sourcemap: "hidden",
   },
   plugins: [
     dts({

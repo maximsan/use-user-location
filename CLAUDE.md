@@ -91,4 +91,4 @@ Because jsdom omits the browser APIs the hook needs, [src/__tests__/setup.ts](sr
 
 ## Build output
 
-Vite library mode ([vite.config.ts](vite.config.ts)) emits `es`, `umd`, and `cjs` bundles plus a sourcemap. `react` and `react-dom` are externalized (peer deps, `react >=16.8.0`). `vite-plugin-dts` v5 (`bundleTypes` + `@microsoft/api-extractor`) emits bundled `dist/index.d.ts`. `tsconfig.json` is `noEmit` — Vite/Rollup owns the build; `typecheck` still validates `vite.config.ts` (Vitest config merged via `vitest/config`).
+Vite library mode ([vite.config.ts](vite.config.ts)) emits `es`, `umd`, and `cjs` bundles. Sourcemaps use `sourcemap: "hidden"`: `.map` files are still written to `dist/` for local debugging, but the bundles carry no `//# sourceMappingURL` comment, and the `files` allowlist excludes `dist/**/*.map` so maps are not published. `react` and `react-dom` are externalized (peer deps, `react >=16.8.0`). `vite-plugin-dts` v5 (`bundleTypes` + `@microsoft/api-extractor`) emits bundled `dist/index.d.ts`. `tsconfig.json` is `noEmit` — Vite/Rollup owns the build; `typecheck` still validates `vite.config.ts` (Vitest config merged via `vitest/config`).
